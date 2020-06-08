@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>Kubernetes Terminal</title>
+</head>
+
+<body>
+  <form action="/term">
+    <label>resource</label>
+    <select name="resource">
+      <option value="exec">exec</option>
+      <option value="attach">logs</option>
+    </select>
+    </br>
+    <label>context</label>
+    <input name="context">
+    </br>
+    <label>namespace</label>
+    <input name="namespace">
+    </br>
+    <label>pod</label>
+    <input name="pod">
+    </br>
+    <label>container</label>
+    <input name="container">
+    </br>
+    <label>timeout</label>
+    <input name="timeout">
+    </br>
+    <label>tailLines</label>
+    <input name="tailLines">
+    </br>
+    <button>submit</button>
+  </form>
+</body>
+
+</html>

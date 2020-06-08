@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kubernetes Terminal</title>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/noty/3.1.4/noty.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/xterm/3.14.5/xterm.css">
+
+  <!-- Xterm -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xterm/3.14.5/xterm.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xterm/3.14.5/addons/terminado/terminado.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xterm/3.14.5/addons/fit/fit.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xterm/3.14.5/addons/webLinks/webLinks.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xterm/3.14.5/addons/search/search.js"></script>
+
+  <!-- Noty -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/noty/3.1.4/noty.min.js"></script>
+
+  <!-- lodash -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.15/lodash.js"></script>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+    }
+    html, body, .fullscreen {
+      height: 100%;
+      min-height: 100%;
+    }
+  </style>
+</head>
+<body>
+<div id="terminal" class="fullscreen"></div>
+
+<script>
+  var url = "ws://" + location.host + "/ws" + location.search;
+  var ws = new WebSocket(url);
+  var term;
+  var resource = (url.indexOf("resource=exec") != -1) ? "exec" : "attach";
+
+  ws.onopen = function(event) {
+    createTerm()
+    window.addEventListener("resize", _.debounce(resize, 500))
+  }
+
+  ws.onclose = function(event) {
+    term.writeln("\r\n\x1b[1;33mconnection close\x1B[0m");
+    term.setOption("cursorBlink", false);
+    window.removeEventListener("resize", _.debounce(resize, 500))
+  }
+
+  ws.onmessage = function(event) {
+    message = JSON.parse(event.data);
+    if (message.Op == "stdout") {
+      if (resource == "attach") {
+        term.write(message.Data.replace(/\r?\n/g, "\r\n"))
+      } else {
+        term.write(message.Data)
+      }
+    } else if (message.Op == "toast") {
+      new Noty({
+        type: message.ToastType,
+        theme: 'relax',
+        text: message.Data,
+        timeout: (message.ToastType == "error") ? 10000 : 5000
+      }).show();
+    }
+  }
+
+  function createTerm() {
+    Terminal.applyAddon(terminado);
+    Terminal.applyAddon(fit)
+    Terminal.applyAddon(webLinks)
+    Terminal.applyAddon(search)
+    term = new Terminal({
+      cursorBlink: true
+    })
+    term.open(document.getElementById("terminal"))
+    term.on("resize", size => {
+      ws.send(
+        JSON.stringify({ Op: "resize", Rows: size.rows, Cols: size.cols })
+      )
+    })
+    term.on("data", msg => {
+      ws.send(JSON.stringify({Op: "stdin", Data: msg}))
+    })
+    resize()
+    term.webLinksInit()
+  }
+
+  function resize() {
+    term.fit()
+  }
+</script>
+</body>
+</html>
